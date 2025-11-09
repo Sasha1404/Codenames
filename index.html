@@ -43,7 +43,7 @@
     .assassin, .black { background: var(--black); border:1px solid #111; }
     .green { background: var(--green); border:1px solid var(--green-b); }
 
-    /* colorblind patterns (simple, CSS-only) */
+    /* colorblind patterns */
     .cb .red { background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.25) 0 6px, rgba(255,255,255,0) 6px 12px); }
     .cb .blue { background-image: radial-gradient(rgba(255,255,255,.3) 1px, transparent 1px); background-size: 8px 8px; }
     .cb .neutral { background-image: linear-gradient(rgba(255,255,255,.35), rgba(255,255,255,.35)); }
@@ -55,21 +55,13 @@
     .legend li { display:flex; align-items:center; gap:8px; }
     .dot { width:14px; height:14px; border-radius:4px; display:inline-block; border:1px solid rgba(0,0,0,.1); }
 
-    .aside { display:grid; grid-template-columns: 1fr; gap:12px; }
-
-    .two { display:grid; grid-template-columns: 1fr; gap:12px; }
-    @media (min-width: 980px){ .two { grid-template-columns: 1fr 320px; } }
-
     .muted { color: var(--muted); font-size:12px; }
     .badge { display:inline-block; padding:4px 8px; border-radius:999px; color:#fff; font-weight:700; font-size:12px; }
     .badge.red { background: var(--red); }
     .badge.blue { background: var(--blue); }
 
-    .qr { display:flex; flex-direction:column; align-items:center; gap:8px; }
-    .qr img { width:220px; height:220px; border-radius:10px; border:1px solid #e5e7eb; background:#fff; }
-
-    .quote { font-size:14px; color:#111827; line-height:1.5; }
-    .quote small { color: var(--muted); }
+    .quote { font-size:22px; color:#111827; line-height:1.35; font-weight:700; text-align:center; margin:6px 0 16px 0; }
+    .quote small { display:block; margin-top:6px; color: var(--muted); font-weight:500; font-size:14px; }
   </style>
 </head>
 <body>
@@ -79,15 +71,18 @@
       <div class="muted">Tema: <span id="themeLabel">Otaku</span></div>
     </header>
 
+    <!-- Frase grande arriba -->
+    <div id="quoteBox" class="quote"></div>
+
     <div class="card">
       <div class="body">
         <div class="controls">
           <div>
             <label>Variante</label>
             <select id="variant">
-              <option value="original">Codenames (original)</option>
+              <option value="original">Codenames (original, 5×5)</option>
               <option value="pictures">Codenames: Pictures (5×4)</option>
-              <option value="duet">Codenames: Duet</option>
+              <option value="duet">Codenames: Duet (5×5)</option>
             </select>
           </div>
           <div>
@@ -112,7 +107,7 @@
       </div>
     </div>
 
-    <div class="two" style="margin-top:12px;">
+    <div style="margin-top:12px;">
       <div class="card">
         <div class="body">
           <div class="grid-wrap">
@@ -123,65 +118,254 @@
             <span id="startBadge" class="badge" style="display:none"></span>
             <span class="muted">Semilla: <span id="seedLabel"></span></span>
           </div>
-          <div class="quote" id="quoteBox" style="margin-top:12px;"></div>
         </div>
       </div>
 
-      <div class="aside">
-        <div class="card">
-          <div class="body legend">
-            <h3 style="margin:0 0 8px 0; font-size:16px;">Leyenda</h3>
-            <ul id="legendList"></ul>
-            <p class="muted" style="margin-top:8px;">Las cartas objetivo son las "claves" que ven los líderes. Usa la misma semilla para recrear exactamente la misma carta.</p>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="body">
-            <h3 style="margin:0 0 8px 0; font-size:16px;">Compartir por QR</h3>
-            <div class="qr">
-              <img id="qrImg" alt="QR" src=""/>
-              <div class="muted" style="word-break:break-all; font-size:11px;" id="shareUrl"></div>
-              <div style="display:flex; gap:8px; width:100%;">
-                <button id="openUrl" class="ghost">Abrir</button>
-                <button id="copyUrl" class="ghost">Copiar URL</button>
-                <button id="downloadQR" class="primary">Descargar QR</button>
-              </div>
-            </div>
-          </div>
+      <div class="card" style="margin-top:12px;">
+        <div class="body legend">
+          <h3 style="margin:0 0 8px 0; font-size:16px;">Leyenda</h3>
+          <ul id="legendList"></ul>
         </div>
       </div>
     </div>
-
-    <p class="muted" style="margin-top:12px;">Consejo: sube este <strong>index.html</strong> a Netlify Drop (arrastrar y soltar) o a GitHub Pages y comparte el QR.</p>
   </div>
 
 <script>
-// ===== Utilidades de semilla y aleatoriedad =====
+// ===== Utilidades =====
 function mulberry32(a){return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;}};
 function seededShuffle(arr, seed){const rng = mulberry32(seed); const a = arr.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a;}
 function hashSeed(str){let h=2166136261>>>0; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0;}
 function parseSeed(input){ if(!input) return (Date.now()>>>0); const n = Number(input); return Number.isFinite(n) && n>0 ? (n>>>0) : hashSeed(String(input)); }
 
-// ===== Frases (Otaku & Andaluza) =====
+// ===== Frases (50 + 50) =====
 const QUOTES = {
+  // 100 frases otaku (series del proyecto + Naruto)
   otaku: [
+    // One Piece (12)
     { text: '¡Seré el Rey de los Piratas!', author: 'Monkey D. Luffy · One Piece' },
+    { text: 'No importa cómo sea el pasado.', author: 'Roronoa Zoro · One Piece' },
+    { text: 'Nunca niegues la sonrisa de un amigo.', author: 'Tony Tony Chopper · One Piece' },
+    { text: '¡Sogeking salva el día!', author: 'Usopp · One Piece' },
+    { text: 'Los hombres sueñan, y eso no se puede detener.', author: 'Marshall D. Teach · One Piece' },
+    { text: '¡La carne lo cura todo!', author: 'Monkey D. Luffy · One Piece' },
+    { text: 'Un capitán nunca abandona a su nakama.', author: 'Monkey D. Luffy · One Piece' },
+    { text: 'Corta el miedo antes que la carne.', author: 'Roronoa Zoro · One Piece' },
+    { text: '¡Yo dibujo sueños!', author: 'Nami · One Piece' },
+    { text: 'La cocina también es combate.', author: 'Sanji · One Piece' },
+    { text: 'El mundo necesita música y libertad.', author: 'Brook · One Piece' },
+    { text: 'Un arqueólogo persigue la verdad, cueste lo que cueste.', author: 'Nico Robin · One Piece' },
+
+    // Dragon Ball (12)
+    { text: '¡Kamehame‑ha!', author: 'Son Goku · Dragon Ball' },
+    { text: 'El poder viene del esfuerzo.', author: 'Vegeta · Dragon Ball' },
+    { text: 'Yo protegeré la Tierra.', author: 'Son Goku · Dragon Ball' },
+    { text: 'El orgullo saiyajin no se rompe.', author: 'Vegeta · Dragon Ball' },
+    { text: '¡No te rindas, Gohan!', author: 'Piccolo · Dragon Ball' },
+    { text: 'La paz llega tras la pelea justa.', author: 'Son Gohan · Dragon Ball' },
+    { text: 'La calma decide el combate.', author: 'Piccolo · Dragon Ball' },
+    { text: 'Más allá del límite hay otro límite.', author: 'Goku · Dragon Ball' },
+    { text: 'La familia también es fuerza.', author: 'Gohan · Dragon Ball' },
+    { text: 'No hay destino sin voluntad.', author: 'Trunks · Dragon Ball' },
+    { text: 'El rival de hoy es el maestro de mañana.', author: 'Vegeta · Dragon Ball' },
+    { text: 'La técnica vence a la fuerza bruta.', author: 'Tenshinhan · Dragon Ball' },
+
+    // Jujutsu Kaisen (10)
     { text: 'Yo soy el más fuerte.', author: 'Satoru Gojo · Jujutsu Kaisen' },
-    { text: '¡Plus Ultra!', author: 'All Might · My Hero Academia' },
+    { text: 'Muere con dignidad, o vive y lucha.', author: 'Kento Nanami · Jujutsu Kaisen' },
+    { text: 'Mi estilo es clavar la égida.', author: 'Nobara Kugisaki · Jujutsu Kaisen' },
+    { text: 'No voy a perder a nadie más.', author: 'Yuji Itadori · Jujutsu Kaisen' },
+    { text: 'Las reglas existen para romperse bien.', author: 'Satoru Gojo · Jujutsu Kaisen' },
+    { text: 'Una promesa es una maldición bonita.', author: 'Megumi Fushiguro · Jujutsu Kaisen' },
+    { text: 'Los débiles no son basura si avanzan.', author: 'Maki Zenin · Jujutsu Kaisen' },
+    { text: 'El miedo es un hilo que se corta entrenando.', author: 'Yuji Itadori · Jujutsu Kaisen' },
+    { text: 'Lo correcto pesa más que la fama.', author: 'Nanami · Jujutsu Kaisen' },
+    { text: 'Los límites son acuerdos con uno mismo.', author: 'Gojo · Jujutsu Kaisen' },
+
+    // Attack on Titan (10)
     { text: '¡Entreguen sus corazones!', author: 'Erwin Smith · Attack on Titan' },
-    { text: 'Levántate.', author: 'Sung Jin-Woo · Solo Leveling' },
-    { text: 'Solo soy un tipo que es héroe por diversión.', author: 'Saitama · One Punch Man' },
-    { text: '¡Kamehame-ha!', author: 'Son Goku · Dragon Ball' },
-    { text: '¡Nunca me rendiré!', author: 'Tanjiro Kamado · Demon Slayer' },
-    { text: '¡Saltamos más alto!', author: 'Shōyō Hinata · Haikyu!!' }
+    { text: 'Si no luchas, no ganas.', author: 'Eren Yeager · Attack on Titan' },
+    { text: 'El mundo es cruel, pero también hermoso.', author: 'Mikasa Ackerman · Attack on Titan' },
+    { text: 'Vivir con culpa duele más que morir.', author: 'Levi Ackerman · Attack on Titan' },
+    { text: 'A veces hay que elegir lo malo conocido.', author: 'Armin Arlert · Attack on Titan' },
+    { text: 'La verdad pesa más que el miedo.', author: 'Hange Zoe · Attack on Titan' },
+    { text: 'Un paso fuera del muro es valor puro.', author: 'Mikasa · Attack on Titan' },
+    { text: 'La obediencia ciega también mata.', author: 'Levi · Attack on Titan' },
+    { text: 'Soñar es la primera fuga.', author: 'Armin · Attack on Titan' },
+    { text: 'El sacrificio no debe ser moneda diaria.', author: 'Erwin · Attack on Titan' },
+
+    // Solo Leveling (10)
+    { text: 'Levántate.', author: 'Sung Jin‑Woo · Solo Leveling' },
+    { text: 'Yo decido mi límite.', author: 'Sung Jin‑Woo · Solo Leveling' },
+    { text: 'El miedo es un buen aviso, no un amo.', author: 'Cha Hae‑In · Solo Leveling' },
+    { text: 'El poder sin control es ruina.', author: 'Go Gun‑Hee · Solo Leveling' },
+    { text: 'Un paso más, siempre.', author: 'Sung Jin‑Woo · Solo Leveling' },
+    { text: 'Ganas o aprendes.', author: 'Sung Jin‑Woo · Solo Leveling' },
+    { text: 'Tus sombras siguen tu decisión.', author: 'Sung Jin‑Woo · Solo Leveling' },
+    { text: 'La puerta más dura abre con paciencia.', author: 'Cha Hae‑In · Solo Leveling' },
+    { text: 'El precio del poder es soledad.', author: 'Sung Jin‑Woo · Solo Leveling' },
+    { text: 'Ser débil fue mi mejor maestro.', author: 'Sung Jin‑Woo · Solo Leveling' },
+
+    // My Hero Academia (12)
+    { text: '¡Plus Ultra!', author: 'All Might · My Hero Academia' },
+    { text: 'Un héroe nace del acto, no del don.', author: 'Izuku Midoriya · My Hero Academia' },
+    { text: 'Sonríe: es el símbolo de la paz.', author: 'All Might · My Hero Academia' },
+    { text: 'Ganar no lo es todo; mejorar sí.', author: 'Shōto Todoroki · My Hero Academia' },
+    { text: 'Un paso adelante, aunque tiemble.', author: 'Ochaco Uraraka · My Hero Academia' },
+    { text: 'Ser duro sin ser cruel.', author: 'Eraserhead · My Hero Academia' },
+    { text: 'La esperanza se entrena a diario.', author: 'Deku · My Hero Academia' },
+    { text: 'El corazón es el mejor soporte.', author: 'Recovery Girl · My Hero Academia' },
+    { text: 'El orgullo cede ante el trabajo en equipo.', author: 'Bakugo · My Hero Academia' },
+    { text: 'El fuego también puede abrigar.', author: 'Endeavor · My Hero Academia' },
+    { text: 'Los símbolos son personas primero.', author: 'All Might · My Hero Academia' },
+    { text: 'Cae diez veces, levántate once.', author: 'Izuku Midoriya · My Hero Academia' },
+
+    // Demon Slayer (8)
+    { text: '¡No perderé a nadie más!', author: 'Tanjiro Kamado · Demon Slayer' },
+    { text: 'Respira. Concéntrate.', author: 'Giyu Tomioka · Demon Slayer' },
+    { text: 'El corazón firme corta mejor.', author: 'Kyojuro Rengoku · Demon Slayer' },
+    { text: 'Ser amable es también ser fuerte.', author: 'Nezuko Kamado · Demon Slayer' },
+    { text: 'El miedo es parte del valor.', author: 'Zenitsu Agatsuma · Demon Slayer' },
+    { text: 'La flor del esfuerzo florece.', author: 'Shinobu Kocho · Demon Slayer' },
+    { text: 'Cabeza dura, corazón blando.', author: 'Inosuke Hashibira · Demon Slayer' },
+    { text: 'La compasión no resta filo.', author: 'Tanjiro Kamado · Demon Slayer' },
+
+    // Haikyu!! (8)
+    { text: '¡Saltamos más alto!', author: 'Shōyō Hinata · Haikyu!!' },
+    { text: 'Un punto a la vez.', author: 'Tobio Kageyama · Haikyu!!' },
+    { text: 'El equipo hace al rey.', author: 'Sawamura Daichi · Haikyu!!' },
+    { text: 'Pierde el ego, gana el juego.', author: 'Kei Tsukishima · Haikyu!!' },
+    { text: 'Las pelotas difíciles son regalos.', author: 'Nishinoya Yū · Haikyu!!' },
+    { text: 'La fe es entrenamiento acumulado.', author: 'Kōshi Sugawara · Haikyu!!' },
+    { text: 'Bloquear también es creer.', author: 'Asahi Azumane · Haikyu!!' },
+    { text: 'El ritmo gana partidos.', author: 'Kei Tsukishima · Haikyu!!' },
+
+    // One Punch Man (8)
+    { text: 'Soy héroe por diversión.', author: 'Saitama · One Punch Man' },
+    { text: 'La fuerza sin propósito está vacía.', author: 'Genos · One Punch Man' },
+    { text: 'La rutina mata monstruos.', author: 'Saitama · One Punch Man' },
+    { text: 'Aprende del golpe, no del aplauso.', author: 'Bang · One Punch Man' },
+    { text: 'La justicia también se entrena.', author: 'Mumen Rider · One Punch Man' },
+    { text: 'El miedo a perder te frena más.', author: 'Fubuki · One Punch Man' },
+    { text: 'La capa no hace al héroe.', author: 'Saitama · One Punch Man' },
+    { text: 'La calma es mi arma secreta.', author: 'Saitama · One Punch Man' },
+
+    // Naruto (10)
+    { text: 'No voy a echarme atrás.', author: 'Naruto Uzumaki · Naruto' },
+    { text: 'Los lazos son mi fuerza.', author: 'Naruto Uzumaki · Naruto' },
+    { text: 'El trabajo supera al talento.', author: 'Rock Lee · Naruto' },
+    { text: 'La venganza no llena el vacío.', author: 'Sasuke Uchiha · Naruto' },
+    { text: 'El líder come al final.', author: 'Shikamaru Nara · Naruto' },
+    { text: 'La voluntad de fuego no se apaga.', author: 'Hiruzen Sarutobi · Naruto' },
+    { text: 'Proteger a mis amigos es mi camino ninja.', author: 'Naruto Uzumaki · Naruto' },
+    { text: 'El genio reconoce el esfuerzo ajeno.', author: 'Neji Hyuga · Naruto' },
+    { text: 'Las máscaras pesan más que las cicatrices.', author: 'Kakashi Hatake · Naruto' },
+    { text: 'El perdón también es una técnica secreta.', author: 'Itachi Uchiha · Naruto' }
   ],
+
+  // 100 andaluzas (50 refranes/expresiones + 50 célebres/coloquiales)
   andaluz: [
-    { text: 'La inspiración existe, pero tiene que encontrarte trabajando.', author: 'Pablo Picasso' },
-    { text: 'Caminante, no hay camino; se hace camino al andar.', author: 'Antonio Machado' },
-    { text: 'El más terrible de los sentimientos es el de tener la esperanza perdida.', author: 'Federico García Lorca' },
-    { text: 'Andalucía, por sí, para España y la Humanidad.', author: 'Blas Infante' },
-    { text: 'Quien no ha visto Sevilla, no ha visto maravilla.', author: 'Refrán andaluz' }
+    // Refranes y expresiones con giro andaluz (50)
+    { text: 'Ozú, al que madruga, Dios lo ayuda.', author: 'Refrán andaluz' },
+    { text: 'Illo, quien no arriesga no gana.', author: 'Refrán andaluz' },
+    { text: 'No hay atajo sin trabajo, mi arma.', author: 'Refrán andaluz' },
+    { text: 'A buen hambre no hay pan duro, quillo.', author: 'Refrán andaluz' },
+    { text: 'Cada loco con su tema, arsa.', author: 'Refrán andaluz' },
+    { text: 'Más vale maña que fuerza, miarma.', author: 'Refrán andaluz' },
+    { text: 'Dime con quién andas y te digo quién ereh.', author: 'Refrán andaluz' },
+    { text: 'Quien mucho abarca, poco aprieta, picha.', author: 'Refrán andaluz' },
+    { text: 'Nunca es tarde si la dicha es buena, ozú.', author: 'Refrán andaluz' },
+    { text: 'Donde hay humo hay candela.', author: 'Refrán andaluz' },
+    { text: 'A falta de pan, buenas son tortas de aceite.', author: 'Refrán andaluz' },
+    { text: 'Al mal tiempo, buena cara… y un poquito de arte.', author: 'Refrán andaluz' },
+    { text: 'De tal palo, tal astilla, mi alma.', author: 'Refrán andaluz' },
+    { text: 'Más vale tarde que nunca, miarma.', author: 'Refrán andaluz' },
+    { text: 'No por mucho madrugar amanece más temprano, armaíta.', author: 'Refrán andaluz' },
+    { text: 'Ande yo caliente y ríase la gente, quillo.', author: 'Refrán andaluz' },
+    { text: 'Cría cuervos y te sacarán los ojitos, ay oma.', author: 'Refrán andaluz' },
+    { text: 'El hábito no hace al monje, illo.', author: 'Refrán andaluz' },
+    { text: 'Ojos que no ven, corazón que no siente, miarma.', author: 'Refrán andaluz' },
+    { text: 'No hay mal que por bien no venga, arsa.', author: 'Refrán andaluz' },
+    { text: 'Quien avisa no es traidor, picha.', author: 'Refrán andaluz' },
+    { text: 'En casa de herrero, cuchillo de palo, quilla.', author: 'Refrán andaluz' },
+    { text: 'A caballo regalao no se le mira el diente, miarma.', author: 'Refrán andaluz' },
+    { text: 'Más vale prevenir que curar, miarma.', author: 'Refrán andaluz' },
+    { text: 'Perro ladrador, poco mordedor, quillo.', author: 'Refrán andaluz' },
+    { text: 'No ni ná, que las cosas se hacen bien.', author: 'Dicho andaluz' },
+    { text: 'Arsa y toma, a por lo nuestro.', author: 'Dicho andaluz' },
+    { text: 'Mi arma, menos quejío y más faena.', author: 'Dicho andaluz' },
+    { text: 'Ea, cada uno con su compás.', author: 'Dicho andaluz' },
+    { text: 'Ojú, qué caló; hidrátate, criatura.', author: 'Dicho andaluz' },
+    { text: 'Shiquillo, el que quiere, puede.', author: 'Dicho andaluz' },
+    { text: 'Arrempuja, que el camino se hace andando.', author: 'Dicho andaluz' },
+    { text: 'Illo, no me seas flojito.', author: 'Dicho andaluz' },
+    { text: 'Miarma, lo bien hecho, bien parece.', author: 'Dicho andaluz' },
+    { text: 'Pisha, menos parla y más arte.', author: 'Dicho andaluz' },
+    { text: 'Compás y duende, y tó sale.', author: 'Dicho andaluz' },
+    { text: 'Ole tus ganas, criatura.', author: 'Dicho andaluz' },
+    { text: 'A tu tran tran, pero sin dormirse.', author: 'Dicho andaluz' },
+    { text: 'Ojito, que quien mucho presume poco curra.', author: 'Dicho andaluz' },
+    { text: 'Quillo, espabilarse es gratis.', author: 'Dicho andaluz' },
+    { text: 'No te me vengas abajo, mi alma.', author: 'Dicho andaluz' },
+    { text: 'Arsa, que la alegría es oficio.', author: 'Dicho andaluz' },
+    { text: 'Ni chicha ni limoná: decide, illo.', author: 'Dicho andaluz' },
+    { text: 'Con salero, todo sabe mejor.', author: 'Dicho andaluz' },
+    { text: 'A compás lento también se llega.', author: 'Dicho andaluz' },
+    { text: 'Quillo, los peros pa los perales.', author: 'Dicho andaluz' },
+    { text: 'Arsa, más vale un hoy que dos mañanas.', author: 'Dicho andaluz' },
+    { text: 'No me marees la perdiz, miarma.', author: 'Dicho andaluz' },
+    { text: 'Con duende y constancia, miarma.', author: 'Dicho andaluz' },
+    { text: 'Ole y ole, pero trabaja, picha.', author: 'Dicho andaluz' },
+
+    // Frases y guiños de andaluces célebres en tono coloquial (50)
+    { text: 'La inspiración te pilla currando, miarma.', author: 'Pablo Picasso' },
+    { text: 'Verde que te quiero verde, quillo.', author: 'Federico García Lorca' },
+    { text: 'Caminante, se hace camino al andar… arsa.', author: 'Antonio Machado' },
+    { text: 'Yo soy del Sur y a mucha honra.', author: 'Rocío Jurado' },
+    { text: 'El duende que me lleve donde quiera.', author: 'Camarón de la Isla' },
+    { text: 'La guitarra habla cuando tú callas, miarma.', author: 'Paco de Lucía' },
+    { text: 'Si me quieres, quiéreme entera, ozú.', author: 'Lola Flores (verso de Loynaz)' },
+    { text: 'La emoción es la verdad del arte, quilla.', author: 'María Zambrano' },
+    { text: 'La patria del poeta es su lengua, picha.', author: 'Luis Cernuda' },
+    { text: 'Andalucía, por sí y con alegría.', author: 'Blas Infante' },
+    { text: 'Nunca dejé de ser aprendiz, mi arma.', author: 'Manolo Sanlúcar' },
+    { text: 'Sevilla es un estado de ánimo, illo.', author: 'Antonio Burgos' },
+    { text: 'El mejor vino, con los compae.', author: 'Guiño popular andaluz' },
+    { text: 'El arte es una mentirilla que dice la verdad.', author: 'Pablo Picasso' },
+    { text: 'Yo no soy de aquí ni de allá, arsa.', author: 'Carlos Cano' },
+    { text: 'La pureza está en el mestizaje, miarma.', author: 'Enrique Morente' },
+    { text: 'La vida es aprender a perder… y a reírse.', author: 'Antonio Banderas' },
+    { text: 'No hay ná más serio que el humor.', author: 'Chiquito de la Calzada' },
+    { text: 'A veces hay que cerrar los ojos pa ver.', author: 'Juan Ramón Jiménez' },
+    { text: 'Quien lo probó lo sabe, quillo.', author: 'Lope de Vega (muy dicho aquí)' },
+    { text: 'Lo que no se da, se pierde, miarma.', author: 'Aforismo popular' },
+    { text: 'Fotografía: cabeza, ojo y corazón a compás.', author: 'Henri Cartier‑Bresson (muy citado)' },
+    { text: 'El cante no se explica, se siente, arsa.', author: 'Camarón de la Isla' },
+    { text: 'En Cádiz la gracia viene de serie, picha.', author: 'Dicho gaditano' },
+    { text: 'Graná tiene duende hasta en los silencios.', author: 'Dicho granadino' },
+    { text: 'Málaga sabe a biznaga y mar, mi arma.', author: 'Dicho malagueño' },
+    { text: 'Córdoba huele a patio y a verso, quilla.', author: 'Dicho cordobés' },
+    { text: 'Huelva canta por fandangos sin avisar.', author: 'Dicho onubense' },
+    { text: 'Jaén es aceite y sol a tiras, arsa.', author: 'Dicho jiennense' },
+    { text: 'Almería es luz que no se gasta.', author: 'Dicho almeriense' },
+    { text: 'La alegría es oficio andaluz, miarma.', author: 'Aforismo andaluz' },
+    { text: 'No me falte compás ni ganas.', author: 'Aforismo andaluz' },
+    { text: 'Con salero se sube cualquier cuesta.', author: 'Aforismo andaluz' },
+    { text: 'El silencio también baila flamenco.', author: 'Aforismo andaluz' },
+    { text: 'La calle es universidad, quillo.', author: 'Aforismo andaluz' },
+    { text: 'Mejor un “ole” sincero que mil aplausos.', author: 'Aforismo andaluz' },
+    { text: 'El arte cabe en un bar de esquina.', author: 'Aforismo andaluz' },
+    { text: 'Quien canta su mal espanta, miarma.', author: 'Dicho andaluz' },
+    { text: 'El sur también existe, arsa.', author: 'Aforismo andaluz' },
+    { text: 'La guasa es patrimonio inmaterial.', author: 'Aforismo andaluz' },
+    { text: 'Donde hay duende, hay verdad.', author: 'Aforismo andaluz' },
+    { text: 'La fiesta se baila trabajando, quilla.', author: 'Aforismo andaluz' },
+    { text: 'Sin compás no hay ná, miarma.', author: 'Aforismo andaluz' },
+    { text: 'El mar enseña paciencia, picha.', author: 'Aforismo andaluz' },
+    { text: 'Barro, azahar y cante: ahí vivimos.', author: 'Aforismo andaluz' },
+    { text: 'La tapa es filosofía de vida.', author: 'Aforismo andaluz' },
+    { text: 'Aire de feria, alma contenta.', author: 'Aforismo andaluz' },
+    { text: 'La siesta bien echá es ciencia.', author: 'Aforismo andaluz' },
+    { text: 'Ole tu arte, criatura.', author: 'Aforismo andaluz' }
   ]
 };
 
@@ -195,11 +379,9 @@ function pickQuote(theme, seed){
 // ===== Generación de carta =====
 function generateKey(variant, seed){
   if(variant === 'duet'){
-    // 5x5, pero distribución cooperativa (9/13/3)
     const cells = [ ...Array(9).fill('green'), ...Array(13).fill('neutral'), ...Array(3).fill('black') ];
     return { grid: seededShuffle(cells, seed), rows:5, cols:5, startTeam: undefined };
   } else if (variant === 'pictures') {
-    // 5x4, 20 casillas: empieza con 8, el otro 7, 4 neutrales, 1 asesino
     const rng = mulberry32(seed);
     const startRed = rng() < 0.5;
     const redCount = startRed ? 8 : 7;
@@ -207,7 +389,6 @@ function generateKey(variant, seed){
     const cells = [ ...Array(redCount).fill('red'), ...Array(blueCount).fill('blue'), ...Array(4).fill('neutral'), 'assassin' ];
     return { grid: seededShuffle(cells, Math.floor(rng()*2**31)), rows:4, cols:5, startTeam: startRed?'red':'blue' };
   } else {
-    // original 5x5: 9 / 8 / 7 / 1
     const rng = mulberry32(seed);
     const startRed = rng() < 0.5;
     const redCount = startRed ? 9 : 8;
@@ -217,7 +398,7 @@ function generateKey(variant, seed){
   }
 }
 
-// ===== Dibujo y estado =====
+// ===== DOM =====
 const el = (id)=>document.getElementById(id);
 const $variant = el('variant');
 const $theme = el('theme');
@@ -231,11 +412,6 @@ const $legend = el('legendList');
 const $seedLabel = el('seedLabel');
 const $startBadge = el('startBadge');
 const $themeLabel = el('themeLabel');
-const $qrImg = el('qrImg');
-const $shareUrl = el('shareUrl');
-const $openUrl = el('openUrl');
-const $copyUrl = el('copyUrl');
-const $downloadQR = el('downloadQR');
 const $quoteBox = el('quoteBox');
 
 let state = { variant:'original', theme:'otaku', seed: (Date.now()>>>0), cb:false };
@@ -257,6 +433,11 @@ function draw(){
 
   const data = generateKey(state.variant, state.seed);
   const grid = data.grid, rows = data.rows, cols = data.cols, startTeam = data.startTeam;
+
+  // Cita
+  const q = pickQuote(state.theme, state.seed);
+  if(q){ $quoteBox.innerHTML = '“'+q.text+'”<small>— '+q.author+'</small>'; }
+  else { $quoteBox.textContent = ''; }
 
   // Ajustar rejilla
   $board.style.setProperty('--rows', String(rows));
@@ -299,16 +480,6 @@ function draw(){
     $legend.appendChild(liLegend('neutral','Neutros (7)', counts['neutral']||0));
     $legend.appendChild(liLegend('assassin','Asesino (1)', counts['assassin']||0));
   }
-
-  // Frase temática (determinística con semilla)
-  const q = pickQuote(state.theme, state.seed);
-  if(q){
-    $quoteBox.innerHTML = '“'+q.text+'”<br><small>— '+q.author+'</small>';
-  } else {
-    $quoteBox.textContent = '';
-  }
-
-  updateShare();
 }
 
 function liLegend(kind, label, n){
@@ -322,43 +493,24 @@ function liLegend(kind, label, n){
   return li;
 }
 
-function updateShare(){
-  const base = window.location.origin + window.location.pathname;
-  const params = new URLSearchParams();
-  params.set('variant', state.variant);
-  params.set('theme', state.theme);
-  params.set('seed', state.seed);
-  const url = base + '?' + params.toString();
-  $shareUrl.textContent = url;
-  history.replaceState(null,'', url);
-  // QR usando un servicio público (rápido):
-  const encoded = encodeURIComponent(url);
-  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=256x256&data='+encoded;
-  $qrImg.src = qrUrl;
-  $downloadQR.onclick = ()=>{
-    const a=document.createElement('a'); a.href=qrUrl; a.download='qr-codenames.png'; a.click();
-  };
-}
-
 // ===== Eventos =====
-$variant.onchange = ()=>{ state.variant=$variant.value; draw(); };
-$theme.onchange = ()=>{ state.theme=$theme.value; draw(); };
-$useSeed.onclick = ()=>{ state.seed = parseSeed($seedInput.value.trim()); draw(); };
-$randSeed.onclick = ()=>{ state.seed = (Date.now()>>>0); $seedInput.value=String(state.seed); draw(); };
-$cbToggle.onchange = ()=>{ state.cb = $cbToggle.checked; draw(); };
-$openUrl.onclick = ()=>{ window.open($shareUrl.textContent, '_blank'); };
-$copyUrl.onclick = ()=>{ navigator.clipboard && navigator.clipboard.writeText($shareUrl.textContent); };
+const el$ = (id,fn)=> { const e = document.getElementById(id); if(e) fn(e); };
+el$('variant', (x)=> x.onchange = ()=>{ state.variant=x.value; draw(); });
+el$('theme', (x)=> x.onchange = ()=>{ state.theme=x.value; draw(); });
+el$('useSeed', (x)=> x.onclick = ()=>{ state.seed = parseSeed(document.getElementById('seedInput').value.trim()); draw(); });
+el$('randSeed', (x)=> x.onclick = ()=>{ state.seed = (Date.now()>>>0); document.getElementById('seedInput').value=String(state.seed); draw(); });
+el$('cbToggle', (x)=> x.onchange = ()=>{ state.cb = x.checked; draw(); });
 
-// ===== Carga inicial (leer query params) =====
+// ===== Init: leer query params y primera render =====
 (function init(){
   const q = new URLSearchParams(window.location.search);
   const v = q.get('variant');
   const t = q.get('theme');
   const s = q.get('seed');
-  if(v){ state.variant=v; $variant.value=v; }
-  if(t){ state.theme=t; $theme.value=t; }
-  if(s){ state.seed = Number(s)||parseSeed(s); $seedInput.value = s; }
-  else { $seedInput.value = String(state.seed); }
+  if(v){ state.variant=v; document.getElementById('variant').value=v; }
+  if(t){ state.theme=t; document.getElementById('theme').value=t; }
+  if(s){ state.seed = Number(s)||parseSeed(s); document.getElementById('seedInput').value = s; }
+  else { document.getElementById('seedInput').value = String(state.seed); }
   draw();
 })();
 </script>
